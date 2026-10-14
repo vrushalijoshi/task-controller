@@ -1,0 +1,5 @@
+## Sample Task resources, plus the namespace they run in.
+resources:
+- namespace.yaml
+- custom_v1alpha1_task.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

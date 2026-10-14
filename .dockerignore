@@ -1,0 +1,33 @@
+# The build needs go.mod, go.sum and the Go source only — everything the
+# Dockerfile's `COPY . .` does not need is filtered here.
+
+# Build and test binaries
+bin/
+dist/
+*.test
+cover.out
+cover.html
+
+# Version control
+.git/
+.gitignore
+
+# Editors, IDEs and OS files
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*~
+
+# Docs and manifests — not needed to compile the manager
+docs/
+config/
+test/
+hack/
+*.md
+Dockerfile
+.dockerignore
+
+# Local environment overrides
+.env
+*.local

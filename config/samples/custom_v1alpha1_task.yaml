@@ -1,0 +1,65 @@
+# Four samples, each demonstrating one behaviour of the controller.
+# Apply with: kubectl apply -k config/samples/
+
+---
+# The happy path: an instant command, every minute.
+#
+# This one also exercises the trickiest timing in the controller. `echo` finishes
+# before the Job ever reports a ready pod, so the Task goes Pending -> Completed
+# without ever showing Running, and the whole create -> finish -> delete cycle
+# can land inside two reconciles.
+apiVersion: custom.io/v1alpha1
+kind: Task
+metadata:
+  name: hello
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: task-controller
+spec:
+  command: "echo Hello World"
+  schedule: "* * * * *"
+
+---
+# Drives the Failed state and the failure counter.
+apiVersion: custom.io/v1alpha1
+kind: Task
+metadata:
+  name: fail
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: task-controller
+spec:
+  command: "echo 'about to fail'; exit 1"
+  schedule: "* * * * *"
+
+---
+# Long enough to actually observe Running, and long enough that the next slot
+# arrives mid-run, which exercises the Forbid concurrency policy: the slot is
+# skipped rather than overlapping.
+apiVersion: custom.io/v1alpha1
+kind: Task
+metadata:
+  name: slow
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: task-controller
+spec:
+  command: "echo start; sleep 75; echo done"
+  schedule: "*/2 * * * *"
+  activeDeadlineSeconds: 300
+
+---
+# February 30th: passes the CRD's shape gate and parses as valid cron, yet can
+# never fire. The controller rejects it at reconcile time with
+# ScheduleValid=False / Unsatisfiable rather than leaving the Task silently
+# idle forever, which is what a naive implementation does.
+apiVersion: custom.io/v1alpha1
+kind: Task
+metadata:
+  name: bad-cron
+  namespace: demo
+  labels:
+    app.kubernetes.io/name: task-controller
+spec:
+  command: "echo never runs"
+  schedule: "0 0 30 2 *"

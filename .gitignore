@@ -1,0 +1,30 @@
+# Binaries and build output
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test and coverage output
+*.test
+cover.out
+cover.html
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+
+# Local environment overrides
+*.local
+.env

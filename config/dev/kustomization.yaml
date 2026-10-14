@@ -1,0 +1,69 @@
+# Local development overlay for kind.
+#
+# config/default ships the production posture: metrics served over HTTPS on
+# :8443 behind authn/authz. That is the right default, but it makes the metrics
+# awkward to look at by hand, which is most of what a local demo does. This
+# overlay switches the same deployment to plain HTTP on :8080 so that
+#
+#     kubectl port-forward svc/task-controller-controller-manager-metrics-service 18080:8080
+#     curl -s localhost:18080/metrics | grep ^task_controller
+#
+# just works. Everything else -- CRD, RBAC, controller, ServiceMonitor -- is
+# inherited unchanged, so the overlay is only ever three patches out of date
+# with the real thing.
+#
+# Do not use this overlay outside a local cluster: it serves metrics
+# unauthenticated to anything that can reach the pod.
+
+resources:
+- ../default
+
+patches:
+# Serve metrics over plain HTTP. Replaces the --metrics-bind-address=:8443 that
+# config/default's manager_metrics_patch.yaml prepends.
+- target:
+    kind: Deployment
+    name: controller-manager
+  patch: |-
+    - op: replace
+      path: /spec/template/spec/containers/0/args/0
+      value: --metrics-bind-address=:8080
+    - op: add
+      path: /spec/template/spec/containers/0/args/-
+      value: --metrics-secure=false
+    # Built locally and loaded with `kind load`, so never pull. A :latest tag
+    # would default to imagePullPolicy: Always and send kind to Docker Hub
+    # instead of using the loaded image.
+    - op: add
+      path: /spec/template/spec/containers/0/imagePullPolicy
+      value: IfNotPresent
+
+# Expose the HTTP metrics port under a name the ServiceMonitor can select.
+- target:
+    kind: Service
+    name: controller-manager-metrics-service
+  patch: |-
+    - op: replace
+      path: /spec/ports/0
+      value:
+        name: http-metrics
+        port: 8080
+        protocol: TCP
+        targetPort: 8080
+
+# Scrape over plain HTTP: no TLS, no bearer token.
+- target:
+    kind: ServiceMonitor
+    name: controller-manager-metrics-monitor
+  patch: |-
+    - op: replace
+      path: /spec/endpoints/0
+      value:
+        port: http-metrics
+        path: /metrics
+        scheme: http
+        interval: 15s
+    # The label kube-prometheus-stack's Prometheus selects by default.
+    - op: add
+      path: /metadata/labels/release
+      value: kube-prometheus-stack
