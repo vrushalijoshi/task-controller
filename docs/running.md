@@ -42,8 +42,6 @@ make metrics                 # port-forward + print the task_controller_* metric
 make prometheus-ui           # Prometheus UI on http://localhost:9090
 ```
 
-A captured example is in [metrics-example.txt](metrics-example.txt).
-
 ## Tests
 
 ```bash
